@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Upload via Base64</title>
+</head>
+<body>
+  <h1>Enviar imagem para o S3 via JSON</h1>
+  <input type="file" id="fileInput" />
+  <br><br>
+  <button onclick="uploadImage()">Enviar</button>
+
+  <pre id="response"></pre>
+
+  <script>
+
+    fetch("http://localhost:3000/arquivos")
+    .then(res => res.json())
+    .then((itens) => {
+      const container = document.createElement('div');
+      itens.forEach((item) => {
+        const filenameElem = document.createElement('p');
+        filenameElem.textContent = item.filename;
+
+        const imgElem = document.createElement('img');
+        imgElem.src = item.url;
+        imgElem.alt = item.filename;
+        imgElem.style.maxWidth = '300px';  
+        imgElem.style.display = 'block';
+        imgElem.style.marginBottom = '20px';
+
+        container.appendChild(filenameElem);
+        container.appendChild(imgElem);
+      });
+
+      document.body.appendChild(container);
+    })
+    .catch(err => {
+      console.error("Erro ao carregar os arquivos:", err);
+      document.getElementById('response').textContent = 'Erro ao carregar arquivos.';
+    });
+
+
+    async function uploadImage() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      if (!file) return alert('Selecione um arquivo');
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const base64 = reader.result.split(',')[1]; // remove "data:image/png;base64," etc
+
+        const res = await fetch('/upload-base64', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            filename: file.name,
+            mimeType: file.type,
+            base64: base64
+          })
+        });
+
+        const data = await res.json();
+
+        console.log(data)
+        document.getElementById('response').innerText = JSON.stringify(data, null, 2);
+        setTimeout(() => location.reload(), 2000);
+      };
+
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>
